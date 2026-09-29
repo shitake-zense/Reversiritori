@@ -2,6 +2,8 @@
 
 2人で言葉をつなぎ、8×8の盤面で得点を競うWebゲームです。招待コード・URLと、辞書ON/OFF別の公開マッチングがあります。Next.js App Router、Supabase Auth/Database/Realtime、Vercelで動きます。
 
+公開版: https://reversiritori.vercel.app/
+
 ## ルール
 
 - 中央の中立開始語から始め、先手をランダムに決めます。双方の準備完了後、交互に合計20手（各10手）、1手15秒です。
@@ -36,6 +38,7 @@
 ## 検証
 
 - `npm test`、`npm run build`
+- 2026-09-29、本番URLに対して `node --env-file=.env.local scripts/check-live.mjs https://reversiritori.vercel.app` と `node --env-file=.env.local scripts/check-full-game.mjs https://reversiritori.vercel.app` が成功。招待、参加者以外の閲覧制限、準備完了、同時着手、辞書モード別の公開待機列、20手の決着を確認しました。
 - `npm run simulate -- 200` と `npm run simulate -- 200 short` で辞書ONの自動対局を比較します。2026-09-29の試行では20手到達はそれぞれ148/200（74%）、197/200（98.5%）、平均確保マスは41.915、20.175、先手と後手の平均得点差は+3.19点、+0.38点でした。前者は8件の候補から選び、後者は2文字語を優先します。手詰まりの主因は語尾から3マス以内に空きがないことです。15秒以内の人間の回答率は、実機試遊で測る必要があります。
 
 ## 操作
