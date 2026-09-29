@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { normalizeWord, total, type Direction, type Game, type Position } from "@/lib/game";
+import { normalizeWord, total, type Direction, type Game } from "@/lib/game";
 
 type Snapshot = { id: string; code: string; player: 0 | 1; opponentPresent: boolean; game: Game; serverNow: string };
 type Queue = "idle" | "waiting" | "expired";
@@ -89,7 +89,13 @@ export default function GameApp() {
   useEffect(() => {
     if (!token) return;
     const code = new URL(window.location.href).searchParams.get("room") || localStorage.getItem("reversiritori_room");
-    if (!code) return;
+    if (!code) {
+      void request("/api/queue").then(data => {
+        if (data.status === "waiting") { setQueue("waiting"); setDictionary(data.dictionary); }
+        else if (data.status === "matched") void request("/api/match", "POST", { action: "join", code: data.code }).then(accept).catch(e => setMessage(e.message));
+      }).catch(() => {});
+      return;
+    }
     void request("/api/match", "POST", { action: "join", code }).then(accept).catch(e => {
       setMessage(e.message); localStorage.removeItem("reversiritori_room");
     });
@@ -210,7 +216,7 @@ export default function GameApp() {
           <div className="board" role="grid" aria-label="8かける8の対戦盤面">{g?.board.map((row, r) => row.map((cell, c) => {
             const tail = g.tail.row === r && g.tail.col === c;
             const ghost = preview.get(`${r},${c}`);
-            return <div key={`${r}-${c}`} role="gridcell" className={`cell ${cell?.owner === 0 ? "p1" : cell?.owner === 1 ? "p2" : ""} ${tail ? "tail" : ""} ${ghost && !ghost.occupied ? "ghost" : ""} ${ghost?.occupied ? "through" : ""}`} aria-label={`${r + 1}行${c + 1}列 ${cell?.kana || ghost?.letter || "空"}${tail ? " 語尾" : ""}${ghost?.occupied ? ` 入力文字${ghost.letter}が通過、盤面はそのまま` : ""}${cell?.owner === null ? " 中立" : cell?.owner === 0 ? " 先手" : " 後手"}`}>{cell?.kana || ghost?.letter || ""}{ghost?.occupied && <span className="pass-letter" aria-hidden="true">{ghost.letter} 通過</span>}{tail && <span className="tail-dot" aria-hidden="true" />}</div>;
+            return <div key={`${r}-${c}`} role="gridcell" className={`cell ${cell?.owner === 0 ? "p1" : cell?.owner === 1 ? "p2" : ""} ${tail ? "tail" : ""} ${ghost && !ghost.occupied ? "ghost" : ""} ${ghost?.occupied ? "through" : ""}`} aria-label={`${r + 1}行${c + 1}列 ${cell?.kana || ghost?.letter || "空"}${tail ? " 語尾" : ""}${ghost?.occupied ? ` 入力文字${ghost.letter}が通過、盤面はそのまま` : ""}${cell ? cell.owner === null ? " 中立" : cell.owner === 0 ? " 先手" : " 後手" : " 空マス"}`}>{cell?.kana || ghost?.letter || ""}{ghost?.occupied && <span className="pass-letter" aria-hidden="true">{ghost.letter} 通過</span>}{tail && <span className="tail-dot" aria-hidden="true" />}</div>;
           }))}</div><KanaRail letters={kana.slice(23, 34)} used={g?.usedKana || []} className="right" /><KanaRail letters={kana.slice(34)} used={g?.usedKana || []} className="bottom" /></div><div className="extra-kana" aria-label="濁音、半濁音、小書き文字の使用状況">{extras.map(ch => <span key={ch} className={g?.usedKana.includes(ch) ? "used" : ""}>{ch}</span>)}</div></div>
         <aside className="side"><div className="panel clock-card"><p className="eyebrow">残り時間</p><strong className={seconds !== null && seconds <= 5 ? "urgent" : ""}>{seconds === null ? "—" : seconds.toFixed(1)}<small>{seconds === null ? "" : "秒"}</small></strong><p>サーバー時刻で確定します</p></div>
           <div className="panel score-card"><p className="eyebrow">SCORE</p>{g?.scores.map((s, i) => <div key={i} className={`score-line ${i === snapshot.player ? "mine" : ""}`}><b>{i === snapshot.player ? "あなた" : "相手"}</b><strong>{total(s)}</strong><small>マス {s.cells} + 新仮名 {s.first} + 濁点 {s.voiced}</small></div>)}</div>

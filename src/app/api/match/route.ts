@@ -61,7 +61,10 @@ export async function POST(req: Request) {
       const existing = await matchByCode(db, body.code);
       if (!existing) return json({ error: "部屋が見つかりません" }, 404);
       const already = seat(existing, user);
-      if (already !== null) return json(view(existing, already));
+      if (already !== null) {
+        await db.from("queue").delete().eq("user_id", user).eq("matched_id", existing.id);
+        return json(view(existing, already));
+      }
       const { data, error } = await db.rpc("join_invite", { p_code: body.code.toUpperCase(), p_user: user });
       if (error) throw error;
       if (!data) return json({ error: "この部屋には参加できません" }, 409);

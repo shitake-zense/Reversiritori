@@ -10,10 +10,10 @@ export async function GET(req: Request) {
     const user = await userFromRequest(req);
     if (!user) return json({ error: "認証が必要です" }, 401);
     const db = admin();
-    const { data, error } = await db.from("queue").select("matched_id, expires_at").eq("user_id", user).maybeSingle();
+    const { data, error } = await db.from("queue").select("dictionary, matched_id, expires_at").eq("user_id", user).maybeSingle();
     if (error) throw error;
     if (!data || Date.parse(data.expires_at) <= Date.now()) return json({ status: "expired" });
-    if (!data.matched_id) return json({ status: "waiting" });
+    if (!data.matched_id) return json({ status: "waiting", dictionary: data.dictionary });
     const { data: match, error: matchError } = await db.from("matches").select("code").eq("id", data.matched_id).single();
     if (matchError) throw matchError;
     return json({ status: "matched", code: match.code });

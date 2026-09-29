@@ -7,8 +7,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const revision = "61b90ba6e669dc2d7d533d4a80d206f3b31d52b1";
 const base = `https://raw.githubusercontent.com/taku910/mecab/${revision}/mecab-ipadic/`;
 const source = process.argv[2];
-const csv = source ? await readFile(source, "utf8") :
-  new TextDecoder("euc-jp").decode(await (await fetch(base + "Noun.csv")).arrayBuffer());
+const csv = new TextDecoder("euc-jp").decode(source ? await readFile(source) :
+  await (await fetch(base + "Noun.csv")).arrayBuffer());
 
 function fields(line) {
   const out = []; let current = "", quote = false;
