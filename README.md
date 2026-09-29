@@ -18,7 +18,7 @@
 4. `supabase/migrations/20260929000000_initial.sql` を1回だけ適用します。GitHub Integration の **Deploy to production がOFF** の場合は、Supabase DashboardのSQL Editorでファイル全体を実行します。適用済みSQLを再実行しないでください。将来Deploy to productionをONにする場合は、既存マイグレーションの履歴を先に整合させます。
 5. `npm run dev` で起動します。異なるブラウザプロファイルを2つ使うと匿名ユーザーを分けられます。
 
-接続の確認には `node --env-file=.env.local scripts/check-connection.mjs` を実行します。認証とテーブルの状態コードだけを表示し、キーやトークンは出力しません。DB適用後の招待対戦・権限・着手・公開マッチの確認には、開発サーバーを起動してから `node --env-file=.env.local scripts/check-live.mjs` を実行します。この確認は匿名のテストユーザーと試合をDBに作成します。
+接続の確認には `node --env-file=.env.local scripts/check-connection.mjs` を実行します。認証とテーブルの状態コードだけを表示し、キーやトークンは出力しません。DB適用後の招待対戦・権限・同時着手・公開マッチの確認には、開発サーバーを起動してから `node --env-file=.env.local scripts/check-live.mjs` を実行します。20手完走の確認には `node --env-file=.env.local scripts/check-full-game.mjs` を使います。これらの確認は匿名のテストユーザーと試合をDBに作成します。
 
 マイグレーションでは試合と公開待機列を保存し、参加者だけに試合のSELECTを許すRLSとRealtime publicationを設定します。書込みはサーバーAPI専用です。接続が切れても画面は定期的にAPIから状態を再取得します。公開待機は2分で期限切れになり、マッチ後も2分間は成立した部屋を取得できます。待機相手がいなければ招待部屋を作れます。短い切断・再読込後は同じ匿名セッションと部屋URLから復帰できます。ブラウザデータ消去後の復旧は対象外です。
 
