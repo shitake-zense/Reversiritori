@@ -69,10 +69,22 @@ assert(readyTwo.game.deadlineAt);
 const words = JSON.parse(await readFile(new URL("../src/data/words.json", import.meta.url), "utf8"));
 const move = legalMove(readyTwo.game, words);
 const current = readyTwo.game.turn === 0 ? one : two;
-const moved = await api(current, "/api/match", { action: "move", code: created.code, ...move });
+const sameMove = { action: "move", code: created.code, ...move };
+const simultaneous = await Promise.all([0, 1].map(async () => {
+  const response = await fetch(`${base}/api/match`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${current.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(sameMove),
+  });
+  return { status: response.status, value: await response.json() };
+}));
+assert.equal(simultaneous.filter(result => result.status === 200).length, 1, "Exactly one simultaneous move must commit");
+const moved = simultaneous.find(result => result.status === 200).value;
 assert.equal(moved.game.moves.length, 1);
 assert.equal(moved.game.version, readyTwo.game.version + 1);
 assert(moved.game.scores[readyTwo.game.turn].cells >= 1);
+const afterRace = await api(current, `/api/match?code=${created.code}`);
+assert.equal(afterRace.game.moves.length, 1);
 
 const waiting = await api(one, "/api/queue", { action: "enter", dictionary: false });
 assert.equal(waiting.status, "waiting");
@@ -82,4 +94,4 @@ const recovered = await api(one, "/api/queue");
 assert.deepEqual(recovered, paired);
 const queueJoined = await api(one, "/api/match", { action: "join", code: paired.code });
 assert.equal(queueJoined.player, 0);
-console.log("Live checks passed: invitation, participant privacy, readiness, move, and public matching.");
+console.log("Live checks passed: invitation, participant privacy, readiness, concurrent move, and public matching.");
