@@ -14,7 +14,7 @@
 
 1. Node.js 20.9以降とnpmを用意し、`npm ci` を実行します。
 2. Supabaseで東京リージョンのプロジェクトを作り、**Authentication → Sign In / Providers** で **Allow anonymous sign-ins** を有効にします。
-3. `.env.example` を `.env.local` にコピーし、Dashboard の **Settings → API Keys** にあるProject URL、Publishable key、Secret keyを設定します。Secret keyはサーバー専用です。値をGitやチャットへ貼らないでください。
+3. `.env.example` を `.env.local` にコピーします。Project URLはDashboardの **Connect** または **Integrations → Data API**、Publishable keyとSecret keyは **Settings → API Keys** で確認して設定します。URLは `https://<プロジェクトID>.supabase.co` の形です。Secret keyはサーバー専用です。値をGitやチャットへ貼らないでください。
 4. 下記のどちらか一方で `supabase/migrations/20260929000000_initial.sql` を1回だけ適用します。
    - Supabase Dashboard **Project Settings → Integrations → GitHub Integration** でこのリポジトリを接続し、Working directory `.`、**Deploy to production** を有効にして `main` にpushする。
    - GitHub連携でマイグレーションを自動適用しない場合、Supabase CLIの `supabase db push` またはDashboardのSQL EditorでSQLを適用する。SQL Editorで適用した後は同じファイルをGitHub連携から再適用しないでください。
