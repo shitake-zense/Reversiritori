@@ -15,18 +15,16 @@
 1. Node.js 20.9以降とnpmを用意し、`npm ci` を実行します。
 2. Supabaseで東京リージョンのプロジェクトを作り、**Authentication → Sign In / Providers** で **Allow anonymous sign-ins** を有効にします。
 3. `.env.example` を `.env.local` にコピーします。Project URLはDashboardの **Connect** または **Integrations → Data API**、Publishable keyとSecret keyは **Settings → API Keys** で確認して設定します。URLは `https://<プロジェクトID>.supabase.co` の形です。Secret keyはサーバー専用です。値をGitやチャットへ貼らないでください。
-4. 下記のどちらか一方で `supabase/migrations/20260929000000_initial.sql` を1回だけ適用します。
-   - Supabase Dashboard **Project Settings → Integrations → GitHub Integration** でこのリポジトリを接続し、Working directory `.`、**Deploy to production** を有効にして `main` にpushする。
-   - GitHub連携でマイグレーションを自動適用しない場合、Supabase CLIの `supabase db push` またはDashboardのSQL EditorでSQLを適用する。SQL Editorで適用した後は同じファイルをGitHub連携から再適用しないでください。
+4. `supabase/migrations/20260929000000_initial.sql` を1回だけ適用します。GitHub Integration の **Deploy to production がOFF** の場合は、Supabase DashboardのSQL Editorでファイル全体を実行します。適用済みSQLを再実行しないでください。将来Deploy to productionをONにする場合は、既存マイグレーションの履歴を先に整合させます。
 5. `npm run dev` で起動します。異なるブラウザプロファイルを2つ使うと匿名ユーザーを分けられます。
 
-接続の確認には `node --env-file=.env.local scripts/check-connection.mjs` を実行します。認証とテーブルの状態コードだけを表示し、キーやトークンは出力しません。
+接続の確認には `node --env-file=.env.local scripts/check-connection.mjs` を実行します。認証とテーブルの状態コードだけを表示し、キーやトークンは出力しません。DB適用後の招待対戦・権限・着手・公開マッチの確認には、開発サーバーを起動してから `node --env-file=.env.local scripts/check-live.mjs` を実行します。この確認は匿名のテストユーザーと試合をDBに作成します。
 
 マイグレーションでは試合と公開待機列を保存し、参加者だけに試合のSELECTを許すRLSとRealtime publicationを設定します。書込みはサーバーAPI専用です。接続が切れても画面は定期的にAPIから状態を再取得します。公開待機は2分で期限切れになり、マッチ後も2分間は成立した部屋を取得できます。待機相手がいなければ招待部屋を作れます。短い切断・再読込後は同じ匿名セッションと部屋URLから復帰できます。ブラウザデータ消去後の復旧は対象外です。
 
 ## Vercel公開
 
-1. Vercelの **New Project** でこのリポジトリをImportします。
+1. Vercelの **New Project** でGitHubの `shitake-zense` スコープを選び、このリポジトリをImportします。スコープが出ない場合は **Add GitHub Scope** で対象アカウントを接続します。
 2. **Project Settings → Environment Variables** に `.env.example` の3変数を設定します。Secret keyに `NEXT_PUBLIC_` を付けないでください。
 3. `vercel.json` はFunctionsを東京 `hnd1` に指定しています。Vercelの **Settings → Functions → Function Regions** でも東京を確認します。
 4. 環境変数を変更したら再デプロイし、公開URLを別端末2台で開いて試合を確認します。
