@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { expire, initialGame, normalizeWord, play, setReady, total, type Game } from "./game";
+import { expire, hasLegalMove, initialGame, normalizeWord, play, setReady, total, type Game } from "./game";
 
 const dictionary = new Set(["ねこ", "こま", "こあ", "こが", "こか", "こがま", "かさ", "さら", "らく", "まこあ", "まさあ"]);
 function ready(starter = "ねこ") {
@@ -56,6 +56,12 @@ describe("game rules", () => {
     expect(result.game.scores[0]).toEqual({ cells: 1, first: 4, voiced: 1 });
     expect(result.game.usedKana).toContain("が");
   });
+  it("finds an OFF-mode move through an occupied neighbor", () => {
+    const g = initialGame("ねこ", 0, false);
+    const board = g.board.map(row => [...row]);
+    for (const [r, c] of [[2, 4], [3, 5], [4, 4]]) board[r][c] = { kana: "あ", owner: 1 };
+    expect(hasLegalMove({ ...g, board }, [])).toBe(true);
+  });
   it("ends on repeated word and n before dictionary validation", () => {
     const g = ready();
     expect(play(g, 0, { word: "ねこ", direction: "down" }, new Date(1000), dictionary)).toMatchObject({ kind: "forfeit", game: { endReason: "repeat" } });
@@ -74,5 +80,11 @@ describe("game rules", () => {
     const result = play(g, 0, { word: "こあ", direction: "down" }, new Date(1000), dictionary);
     expect(result.kind).toBe("applied");
     if (result.kind === "applied") expect(result.game).toMatchObject({ status: "finished", endReason: "score", winner: 0, version: g.version + 1 });
+  });
+  it("declares a draw when 20 completed moves leave equal totals", () => {
+    const g: Game = { ...ready(), moves: Array(19).fill({ player: 0, word: "x", direction: "up", placed: [], at: "" }),
+      scores: [{ cells: 3, first: 2, voiced: 0 }, { cells: 8, first: 0, voiced: 0 }] };
+    const result = play(g, 0, { word: "こあ", direction: "down" }, new Date(1000), dictionary);
+    expect(result).toMatchObject({ kind: "applied", game: { status: "finished", winner: null, endReason: "score" } });
   });
 });
