@@ -88,10 +88,16 @@ assert.equal(afterRace.game.moves.length, 1);
 
 const waiting = await api(one, "/api/queue", { action: "enter", dictionary: false });
 assert.equal(waiting.status, "waiting");
+const duplicateWait = await api(one, "/api/queue", { action: "enter", dictionary: false });
+assert.equal(duplicateWait.status, "waiting");
+const otherMode = await api(outsider, "/api/queue", { action: "enter", dictionary: true });
+assert.equal(otherMode.status, "waiting", "Different dictionary modes must not be paired");
+const cancelled = await api(outsider, "/api/queue", { action: "cancel" });
+assert.equal(cancelled.status, "cancelled");
 const paired = await api(two, "/api/queue", { action: "enter", dictionary: false });
 assert.equal(paired.status, "matched");
 const recovered = await api(one, "/api/queue");
 assert.deepEqual(recovered, paired);
 const queueJoined = await api(one, "/api/match", { action: "join", code: paired.code });
 assert.equal(queueJoined.player, 0);
-console.log("Live checks passed: invitation, participant privacy, readiness, concurrent move, and public matching.");
+console.log("Live checks passed: invitation, privacy, readiness, concurrent move, and separated public queues.");
