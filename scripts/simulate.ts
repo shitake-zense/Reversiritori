@@ -1,5 +1,5 @@
 import words from "../src/data/words.json";
-import { initialGame, legalMoves, play, setReady, total, type Game, type MoveInput } from "../src/lib/game";
+import { cellPoints, initialGame, legalMoves, play, setReady, total, type Game, type MoveInput } from "../src/lib/game";
 
 const dictionary = new Set(words);
 const starters = ["りんご", "さくら", "ねこ", "うみ", "そら", "やま", "かわ", "とり", "はな", "ほし", "くも", "ゆき", "さかな"].filter(w => dictionary.has(w));
@@ -19,6 +19,8 @@ function choose(game: Game): MoveInput | null {
 }
 const N = Number(process.argv[2] || 200);
 let twenty = 0, turns = 0, cells = 0, firstDelta = 0, noMove = 0, blocked = 0, noWord = 0;
+let cellScore = 0, letterScore = 0;
+const skillUses = { shift: 0, extend: 0, overwrite: 0 };
 const tailCounts = new Map<string, number>();
 for (let i = 0; i < N; i++) {
   const starter = starters[Math.floor(random() * starters.length)];
@@ -34,7 +36,7 @@ for (let i = 0; i < N; i++) {
   if (game.moves.length === 20) twenty++;
   if (game.endReason === "no-move") {
     noMove++;
-    const reachable = [[1,0],[-1,0],[0,1],[0,-1]].some(([dr,dc]) => {
+    const reachable = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]].some(([dr,dc]) => {
       return [1,2,3].some(step => {
         const row = game.tail.row + dr * step, col = game.tail.col + dc * step;
         return row >= 0 && row < 8 && col >= 0 && col < 8 && !game.board[row][col];
@@ -45,11 +47,16 @@ for (let i = 0; i < N; i++) {
     tailCounts.set(tail, (tailCounts.get(tail) || 0) + 1);
   }
   turns += game.moves.length;
-  cells += game.scores[0].cells + game.scores[1].cells;
+  cells += (game.scores[0].cells + game.scores[1].cells) / cellPoints;
+  cellScore += game.scores[0].cells + game.scores[1].cells;
+  letterScore += game.scores[0].first + game.scores[0].voiced + game.scores[1].first + game.scores[1].voiced;
+  for (const move of game.moves) if (move.skill) skillUses[move.skill]++;
   const first = i % 2;
   firstDelta += total(game.scores[first]) - total(game.scores[1 - first]);
 }
 console.log(JSON.stringify({ games: N, reached20: twenty, reached20Rate: twenty / N,
   noMove, blocked, noWord, averageTurns: turns / N, averageClaimedCells: cells / N,
+  averageCellScore: cellScore / N, averageLetterScore: letterScore / N,
+  letterScoreShare: letterScore / (cellScore + letterScore), skillUses,
   averageFirstPlayerScoreAdvantage: firstDelta / N,
   commonDeadEnds: [...tailCounts].sort((a, b) => b[1] - a[1]).slice(0, 12) }, null, 2));

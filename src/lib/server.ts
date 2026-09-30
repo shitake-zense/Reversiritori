@@ -50,7 +50,7 @@ export async function matchByCode(db: SupabaseClient, code: string): Promise<Mat
 export function seat(row: MatchRow, user: string): Player | null {
   return row.player1 === user ? 0 : row.player2 === user ? 1 : null;
 }
-export async function compareAndSwap(db: SupabaseClient, row: MatchRow, state: Game, operation: "expire" | "move" | "ready" | "resign"): Promise<Game | null> {
+export async function compareAndSwap(db: SupabaseClient, row: MatchRow, state: Game, operation: "expire" | "move" | "ready" | "resign" | "control_request" | "control_respond"): Promise<Game | null> {
   const { data, error } = await db.rpc("commit_match_state", {
     p_id: row.id, p_version: row.version, p_state: state, p_operation: operation,
   });

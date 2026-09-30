@@ -8,7 +8,7 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 assert(url && key, "Supabase public environment variables are required");
 const words = JSON.parse(await readFile(new URL("../src/data/words.json", import.meta.url), "utf8"));
-const vectors = [["up", -1, 0], ["down", 1, 0], ["left", 0, -1], ["right", 0, 1]];
+const vectors = [["up", -1, 0], ["upRight", -1, 1], ["right", 0, 1], ["downRight", 1, 1], ["down", 1, 0], ["downLeft", 1, -1], ["left", 0, -1], ["upLeft", -1, -1]];
 
 async function player() {
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -32,7 +32,7 @@ function available(game) {
   const used = new Set(game.usedWords);
   const candidates = [];
   for (const word of words) {
-    if (word[0] !== tail || used.has(word)) continue;
+    if (word.length > 4 || word[0] !== tail || used.has(word)) continue;
     for (const [direction, dr, dc] of vectors) {
       const r = row + dr * (word.length - 1), c = col + dc * (word.length - 1);
       if (r < 0 || r > 7 || c < 0 || c > 7 || game.board[r][c]) continue;

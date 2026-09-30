@@ -37,7 +37,7 @@ for (const line of csv.split(/\r?\n/)) {
   // IPAdic: surface, ids/cost, part of speech, POS subtype, ..., reading.
   if (c[4] !== "名詞" || c[5] !== "一般") continue;
   const word = hiragana(c[11] || "");
-  if (!/^[ぁ-んゔー]{2,4}$/u.test(word) || disallowed.test(word) || /^[ぁぃぅぇぉゃゅょっゎー]/u.test(word)) continue;
+  if (!/^[ぁ-んゔー]{2,6}$/u.test(word) || disallowed.test(word) || /^[ぁぃぅぇぉゃゅょっゎー]/u.test(word)) continue;
   // The reading is the playable spelling. Reject readings with isolated long marks.
   if (word.includes("ーー")) continue;
   words.add(word);
@@ -46,7 +46,7 @@ const list = [...words].sort();
 await mkdir(join(root, "src", "data"), { recursive: true });
 await writeFile(join(root, "src", "data", "words.json"), JSON.stringify(list));
 const counts = Object.fromEntries([...new Set(list.map(w => w[0]))].sort().map(ch => [ch, list.filter(w => w[0] === ch).length]));
-await writeFile(join(root, "src", "data", "dictionary-stats.json"), JSON.stringify({ source: "MeCab IPAdic Noun.csv, 名詞/一般", revision, count: list.length, byFirst: counts }, null, 2) + "\n");
+await writeFile(join(root, "src", "data", "dictionary-stats.json"), JSON.stringify({ source: "MeCab IPAdic Noun.csv, 名詞/一般", revision, count: list.length, standardCount: list.filter(w => w.length <= 4).length, extendedCount: list.filter(w => w.length >= 5).length, byFirst: counts }, null, 2) + "\n");
 if (!source) {
   const license = await (await fetch(base + "COPYING")).text();
   await mkdir(join(root, "public"), { recursive: true });

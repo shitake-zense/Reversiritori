@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { compareAndSwap, admin, dictionaryWords, matchByCode, newCode, newGame, seat, userFromRequest } from "@/lib/server";
-import { expire, play, resign, setReady, type Direction, type Game, type Player } from "@/lib/game";
+import { directions, expire, play, requestControl, resign, respondControl, setReady, skillCost, type ControlKind, type Direction, type Game, type Player, type Skill } from "@/lib/game";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       const { row, player } = current;
       const now = new Date();
       let next = expire(row.state, now);
-      let operation: "expire" | "move" | "ready" | "resign" = "expire";
+      let operation: "expire" | "move" | "ready" | "resign" | "control_request" | "control_respond" = "expire";
       if (next === row.state) {
         if (body.action === "ready") {
           if (!row.player2) return json({ error: "対戦相手を待っています" }, 409);
@@ -86,16 +86,30 @@ export async function POST(req: Request) {
           operation = "ready";
         } else if (body.action === "move") {
           if (typeof body.word !== "string" || body.word.length > 32 ||
-              !["up", "down", "left", "right"].includes(body.direction))
+              !directions.includes(body.direction) || (body.skill != null &&
+                (typeof body.skill !== "string" || !Object.hasOwn(skillCost, body.skill))))
             return json({ error: "単語と方向を指定してください" }, 400);
-          const decision = play(row.state, player, { word: body.word, direction: body.direction as Direction }, now, dictionaryWords);
+          const decision = play(row.state, player, { word: body.word, direction: body.direction as Direction, skill: body.skill as Skill | null }, now, dictionaryWords);
           if (decision.kind === "invalid") return json({ error: decision.reason }, 422);
           next = decision.game;
           operation = "move";
         } else if (body.action === "resign") {
-          if (row.state.status !== "playing") return json({ error: "対戦開始後に降参できます" }, 409);
+          if (row.state.status !== "playing" && row.state.status !== "paused") return json({ error: "対戦開始後に降参できます" }, 409);
           next = resign(row.state, player);
           operation = "resign";
+        } else if (body.action === "control_request") {
+          if (!["undo", "pause", "resume", "finish"].includes(body.kind))
+            return json({ error: "提案の種類が正しくありません" }, 400);
+          const requested = requestControl(row.state, player, body.kind as ControlKind, now);
+          if (!requested) return json({ error: "今はこの提案を送れません" }, 409);
+          next = requested;
+          operation = "control_request";
+        } else if (body.action === "control_respond") {
+          if (typeof body.accept !== "boolean") return json({ error: "承認か拒否を選んでください" }, 400);
+          const answered = respondControl(row.state, player, body.accept, now);
+          if (!answered) return json({ error: "この提案には回答できません" }, 409);
+          next = answered;
+          operation = "control_respond";
         } else return json({ error: "操作が正しくありません" }, 400);
       }
       if (next === row.state) return json(view(row, player, now));

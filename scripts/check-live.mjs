@@ -31,8 +31,8 @@ function legalMove(game, words) {
   const { row, col } = game.tail;
   const tail = game.board[row][col].kana;
   for (const word of words) {
-    if (!word.startsWith(tail) || game.usedWords.includes(word)) continue;
-    for (const [direction, dr, dc] of [["up", -1, 0], ["down", 1, 0], ["left", 0, -1], ["right", 0, 1]]) {
+    if (word.length > 4 || !word.startsWith(tail) || game.usedWords.includes(word)) continue;
+    for (const [direction, dr, dc] of [["up", -1, 0], ["upRight", -1, 1], ["right", 0, 1], ["downRight", 1, 1], ["down", 1, 0], ["downLeft", 1, -1], ["left", 0, -1], ["upLeft", -1, -1]]) {
       const endRow = row + dr * (word.length - 1), endCol = col + dc * (word.length - 1);
       if (endRow >= 0 && endRow < 8 && endCol >= 0 && endCol < 8 && !game.board[endRow][endCol])
         return { word, direction };
@@ -66,6 +66,8 @@ assert.equal(readyOne.game.status, "waiting");
 const readyTwo = await api(two, "/api/match", { action: "ready", code: created.code });
 assert.equal(readyTwo.game.status, "playing");
 assert(readyTwo.game.deadlineAt);
+const initialSeconds = (Date.parse(readyTwo.game.deadlineAt) - Date.parse(readyTwo.serverNow)) / 1000;
+assert(initialSeconds > 19 && initialSeconds <= 20.5, `A new turn must last 20 seconds, got ${initialSeconds}`);
 const words = JSON.parse(await readFile(new URL("../src/data/words.json", import.meta.url), "utf8"));
 const move = legalMove(readyTwo.game, words);
 const current = readyTwo.game.turn === 0 ? one : two;
@@ -86,6 +88,30 @@ assert(moved.game.scores[readyTwo.game.turn].cells >= 1);
 const afterRace = await api(current, `/api/match?code=${created.code}`);
 assert.equal(afterRace.game.moves.length, 1);
 
+const undoOffer = await api(one, "/api/match", { action: "control_request", code: created.code, kind: "undo" });
+assert.equal(undoOffer.game.pendingRequest.kind, "undo");
+assert.equal(undoOffer.game.deadlineAt, null);
+const undone = await api(two, "/api/match", { action: "control_respond", code: created.code, accept: true });
+assert.equal(undone.game.moves.length, 0);
+assert.deepEqual(undone.game.releasePoints, [0, 0]);
+assert.equal(undone.game.status, "playing");
+const pauseOffer = await api(one, "/api/match", { action: "control_request", code: created.code, kind: "pause" });
+assert.equal(pauseOffer.game.pendingRequest.kind, "pause");
+const paused = await api(two, "/api/match", { action: "control_respond", code: created.code, accept: true });
+assert.equal(paused.game.status, "paused");
+assert.equal(paused.game.deadlineAt, null);
+const resumeOffer = await api(one, "/api/match", { action: "control_request", code: created.code, kind: "resume" });
+assert.equal(resumeOffer.game.pendingRequest.kind, "resume");
+const resumed = await api(two, "/api/match", { action: "control_respond", code: created.code, accept: true });
+assert.equal(resumed.game.status, "playing");
+assert(resumed.game.deadlineAt);
+const finishOffer = await api(one, "/api/match", { action: "control_request", code: created.code, kind: "finish" });
+assert.equal(finishOffer.game.pendingRequest.kind, "finish");
+const ended = await api(two, "/api/match", { action: "control_respond", code: created.code, accept: true });
+assert.equal(ended.game.status, "finished");
+assert.equal(ended.game.endReason, "agreed");
+assert.equal(ended.game.winner, null);
+
 const waiting = await api(one, "/api/queue", { action: "enter", dictionary: false });
 assert.equal(waiting.status, "waiting");
 const duplicateWait = await api(one, "/api/queue", { action: "enter", dictionary: false });
@@ -100,4 +126,4 @@ const recovered = await api(one, "/api/queue");
 assert.deepEqual(recovered, paired);
 const queueJoined = await api(one, "/api/match", { action: "join", code: paired.code });
 assert.equal(queueJoined.player, 0);
-console.log("Live checks passed: invitation, privacy, readiness, concurrent move, and separated public queues.");
+console.log("Live checks passed: invitation, privacy, readiness, concurrent move, undo, pause, resume, agreed finish, and separated public queues.");
